@@ -13,6 +13,15 @@ type Config struct {
 
 const configFileName = ".gatorconfig.json"
 
+func (c Config) String() string {
+	data, err := json.Marshal(c)
+	if err != nil {
+		return ""
+	}
+
+	return string(data)
+}
+
 func Read() (Config, error) {
 	path, err := getConfigFilePath()
 	if err != nil {
