@@ -11,6 +11,6 @@ RETURNING *;
 -- name: GetUser :one
 SELECT id, created_at, updated_at, name
 FROM users
-WHERE id = $1
+WHERE name = $1
 LIMIT 1;
 

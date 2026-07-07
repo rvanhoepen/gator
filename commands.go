@@ -1,7 +1,15 @@
 package main
 
 import (
+	"context"
+	"database/sql"
+	"errors"
 	"fmt"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/lib/pq"
+	"github.com/rvanhoepen/gator/internal/database"
 )
 
 type command struct {
@@ -16,7 +24,8 @@ type commands struct {
 func newCommands() commands {
 	return commands{
 		registry: map[string]func(*state, command) error{
-			"login": handlerLogin,
+			"login":    handlerLogin,
+			"register": handlerRegister,
 		},
 	}
 }
@@ -35,11 +44,50 @@ func handlerLogin(s *state, cmd command) error {
 	}
 
 	username := cmd.args[0]
-	if err := s.cfg.SetUser(username); err != nil {
+
+	user, err := s.db.GetUser(context.Background(), username)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("user %q does not exist", username)
+		}
+		return err
+	}
+
+	if err := s.cfg.SetUser(user.Name); err != nil {
 		return err
 	}
 
 	fmt.Fprintf(s.output, "User `%s` has been logged in.\n", username)
+
+	return nil
+}
+
+func handlerRegister(s *state, cmd command) error {
+	if len(cmd.args) == 0 {
+		return fmt.Errorf("register expects the username as the only argument")
+	}
+
+	username := cmd.args[0]
+
+	user, err := s.db.CreateUser(context.Background(), database.CreateUserParams{
+		ID:        uuid.New(),
+		Name:      username,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	})
+	if err != nil {
+		var pgErr *pq.Error
+		if errors.As(err, &pgErr) && pgErr.Constraint == "users_name_key" {
+			return fmt.Errorf("user %q already exists", username)
+		}
+		return err
+	}
+
+	if err := s.cfg.SetUser(user.Name); err != nil {
+		return err
+	}
+
+	fmt.Fprintf(s.output, "User `%s` created successfully.\n", user.Name)
 
 	return nil
 }
