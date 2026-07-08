@@ -26,6 +26,7 @@ func newCommands() commands {
 		registry: map[string]func(*state, command) error{
 			"login":    handlerLogin,
 			"register": handlerRegister,
+			"reset":    handlerReset,
 		},
 	}
 }
@@ -88,6 +89,25 @@ func handlerRegister(s *state, cmd command) error {
 	}
 
 	fmt.Fprintf(s.output, "User `%s` created successfully.\n", user.Name)
+
+	return nil
+}
+
+func handlerReset(s *state, cmd command) error {
+	if len(cmd.args) != 0 {
+		return fmt.Errorf("reset expects no arguments")
+	}
+
+	err := s.db.DeleteAllUsers(context.Background())
+	if err != nil {
+		return err
+	}
+
+	if err := s.cfg.SetUser(""); err != nil {
+		return err
+	}
+
+	fmt.Fprintf(s.output, "Users cleared successfully.\n")
 
 	return nil
 }
