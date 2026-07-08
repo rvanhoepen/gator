@@ -41,7 +41,7 @@ func (c *commands) run(s *state, cmd command) error {
 }
 
 func handlerLogin(s *state, cmd command) error {
-	if len(cmd.args) == 0 {
+	if len(cmd.args) != 1 {
 		return fmt.Errorf("login expects the username as the only argument")
 	}
 
@@ -65,7 +65,7 @@ func handlerLogin(s *state, cmd command) error {
 }
 
 func handlerRegister(s *state, cmd command) error {
-	if len(cmd.args) == 0 {
+	if len(cmd.args) != 1 {
 		return fmt.Errorf("register expects the username as the only argument")
 	}
 
@@ -115,7 +115,7 @@ func handlerReset(s *state, cmd command) error {
 
 func handleUsers(s *state, cmd command) error {
 	if len(cmd.args) != 0 {
-		return fmt.Errorf("reset expects no arguments")
+		return fmt.Errorf("users expects no arguments")
 	}
 
 	users, err := s.db.GetUsers(context.Background())
@@ -123,6 +123,12 @@ func handleUsers(s *state, cmd command) error {
 		return err
 	}
 
+	if len(users) == 0 {
+		fmt.Fprintln(s.output, "no users registered yet")
+		return nil
+	}
+
+	fmt.Fprintln(s.output, "available users:")
 	for _, user := range users {
 		if user.Name == s.cfg.CurrentUserName {
 			fmt.Fprintf(s.output, "* %s (current)\n", user.Name)

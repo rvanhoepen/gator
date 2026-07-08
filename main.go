@@ -54,6 +54,16 @@ func main() {
 
 	db, err := sql.Open("postgres", cfg.DBURL)
 	if err != nil {
+		fmt.Fprintln(os.Stderr, "could not open database")
+		os.Exit(1)
+	}
+	defer func() {
+		if err := db.Close(); err != nil {
+			fmt.Fprintln(os.Stderr, "could not close database:", err)
+		}
+	}()
+
+	if err := db.Ping(); err != nil {
 		fmt.Fprintln(os.Stderr, "could not connect to database")
 		os.Exit(1)
 	}

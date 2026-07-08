@@ -31,6 +31,7 @@ To run Gator locally, you will need:
 - Go installed
 - PostgreSQL installed and running
 - A PostgreSQL database for Gator
+- `goose` for database migrations
 
 ## Status
 
@@ -45,33 +46,59 @@ git clone <repository-url>
 cd gator
 ```
 
-Initialize the Go module if it has not been created yet:
-
-```sh
-go mod init gator
-```
-
 Create a PostgreSQL database:
 
 ```sh
 createdb gator
 ```
 
+Create a config file at `~/.gatorconfig.json`:
+
+```json
+{
+  "db_url": "postgres://postgres:postgres@localhost:5432/gator?sslmode=disable",
+  "current_user_name": ""
+}
+```
+
+Update `db_url` to match your local PostgreSQL username, password, host, port, and database name.
+
+Run database migrations:
+
+```sh
+goose -dir sql/schema postgres "postgres://postgres:postgres@localhost:5432/gator?sslmode=disable" up
+```
+
 Run the project:
 
 ```sh
-go run .
+go run . <command> [args...]
 ```
 
-## Example Usage
+## Commands
 
-The command interface is still being built, but Gator will support commands similar to:
+Register a user and set them as the current user:
 
 ```sh
-gator addfeed "Tech Blog" "https://example.com/rss.xml"
-gator follow "Tech Blog"
-gator unfollow "Tech Blog"
-gator browse
+go run . register ricardo
+```
+
+Log in as an existing user:
+
+```sh
+go run . login ricardo
+```
+
+List all users:
+
+```sh
+go run . users
+```
+
+Delete all users and clear the current user:
+
+```sh
+go run . reset
 ```
 
 ## Why RSS?
