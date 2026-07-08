@@ -27,6 +27,7 @@ func newCommands() commands {
 			"login":    handlerLogin,
 			"register": handlerRegister,
 			"reset":    handlerReset,
+			"users":    handleUsers,
 		},
 	}
 }
@@ -108,6 +109,27 @@ func handlerReset(s *state, cmd command) error {
 	}
 
 	fmt.Fprintf(s.output, "Users cleared successfully.\n")
+
+	return nil
+}
+
+func handleUsers(s *state, cmd command) error {
+	if len(cmd.args) != 0 {
+		return fmt.Errorf("reset expects no arguments")
+	}
+
+	users, err := s.db.GetUsers(context.Background())
+	if err != nil {
+		return err
+	}
+
+	for _, user := range users {
+		if user.Name == s.cfg.CurrentUserName {
+			fmt.Fprintf(s.output, "* %s (current)\n", user.Name)
+		} else {
+			fmt.Fprintf(s.output, "* %s\n", user.Name)
+		}
+	}
 
 	return nil
 }
