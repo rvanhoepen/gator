@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -10,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/lib/pq"
 	"github.com/rvanhoepen/gator/internal/database"
+	"github.com/rvanhoepen/gator/internal/feed"
 )
 
 type command struct {
@@ -28,6 +30,7 @@ func newCommands() commands {
 			"register": handlerRegister,
 			"reset":    handlerReset,
 			"users":    handleUsers,
+			"agg":      handleAgg,
 		},
 	}
 }
@@ -137,5 +140,26 @@ func handleUsers(s *state, cmd command) error {
 		}
 	}
 
+	return nil
+}
+
+func handleAgg(s *state, cmd command) error {
+	if len(cmd.args) != 1 {
+		return fmt.Errorf("agg expects one argument; the url")
+	}
+
+	url := cmd.args[0]
+
+	feed, err := feed.FetchFeed(context.Background(), url)
+	if err != nil {
+		return err
+	}
+
+	data, err := json.MarshalIndent(feed, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(string(data))
 	return nil
 }
