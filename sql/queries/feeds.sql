@@ -9,3 +9,9 @@ VALUES (
   $6
 )
 RETURNING *;
+
+-- name: GetFeeds :many
+SELECT f.id, f.name, f.url, u.name as created_by, f.created_at, f.updated_at
+FROM feeds f
+JOIN users u ON f.user_id = u.id
+ORDER BY f.name;

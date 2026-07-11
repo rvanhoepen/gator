@@ -32,6 +32,7 @@ func newCommands() commands {
 			"users":    handleUsers,
 			"agg":      handleAgg,
 			"addfeed":  handleAddFeed,
+			"feeds":    handleListFeeds,
 		},
 	}
 }
@@ -161,7 +162,7 @@ func handleAgg(s *state, cmd command) error {
 		return err
 	}
 
-	fmt.Println(string(data))
+	fmt.Fprintln(s.output, string(data))
 	return nil
 }
 
@@ -201,6 +202,34 @@ func handleAddFeed(s *state, cmd command) error {
 	fmt.Fprintf(s.output, "Feed created successfully:\n")
 	fmt.Fprintf(s.output, "Name: %s\n", newFeed.Name)
 	fmt.Fprintf(s.output, "URL: %s\n", newFeed.Url)
+
+	return nil
+}
+
+func handleListFeeds(s *state, cmd command) error {
+	if len(cmd.args) != 0 {
+		return fmt.Errorf("feeds expects no arguments")
+	}
+
+	feeds, err := s.db.GetFeeds(context.Background())
+	if err != nil {
+		return err
+	}
+
+	if len(feeds) == 0 {
+		fmt.Fprintln(s.output, "no feeds registered yet")
+		return nil
+	}
+
+	fmt.Fprint(s.output, "Listing feeds:\n")
+	fmt.Fprint(s.output, "-----------------------------------\n")
+
+	for i, feed := range feeds {
+		fmt.Fprintf(s.output, "#%d: %s\n", i+1, feed.Name)
+		fmt.Fprintf(s.output, "    %s\n", feed.Url)
+		fmt.Fprintf(s.output, "    Created by: %s\n", feed.CreatedBy)
+		fmt.Fprint(s.output, "-----------------------------------\n")
+	}
 
 	return nil
 }
