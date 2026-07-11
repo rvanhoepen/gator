@@ -31,6 +31,7 @@ func newCommands() commands {
 			"reset":    handlerReset,
 			"users":    handleUsers,
 			"agg":      handleAgg,
+			"addfeed":  handleAddFeed,
 		},
 	}
 }
@@ -161,5 +162,45 @@ func handleAgg(s *state, cmd command) error {
 	}
 
 	fmt.Println(string(data))
+	return nil
+}
+
+func handleAddFeed(s *state, cmd command) error {
+	if len(cmd.args) != 2 {
+		return fmt.Errorf("addfeed expects two arguments: name and url")
+	}
+
+	name := cmd.args[0]
+	url := cmd.args[1]
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	user, err := s.db.GetUser(ctx, s.cfg.CurrentUserName)
+	if err != nil {
+		return err
+	}
+
+	_, err = feed.FetchFeed(ctx, url)
+	if err != nil {
+		return err
+	}
+
+	newFeed, err := s.db.CreateFeed(ctx, database.CreateFeedParams{
+		ID:        uuid.New(),
+		Name:      name,
+		Url:       url,
+		UserID:    user.ID,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	})
+	if err != nil {
+		return err
+	}
+
+	fmt.Fprintf(s.output, "Feed created successfully:\n")
+	fmt.Fprintf(s.output, "Name: %s\n", newFeed.Name)
+	fmt.Fprintf(s.output, "URL: %s\n", newFeed.Url)
+
 	return nil
 }
