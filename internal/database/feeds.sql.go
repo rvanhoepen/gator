@@ -13,16 +13,27 @@ import (
 )
 
 const createFeed = `-- name: CreateFeed :one
-INSERT INTO feeds (id, name, url, user_id, created_at, updated_at)
-VALUES (
-  $1,
-  $2,
-  $3,
-  $4,
-  $5,
-  $6
+WITH inserted_feed AS (
+  INSERT INTO feeds (id, name, url, user_id, created_at, updated_at)
+  VALUES (
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6
+  )
+  RETURNING id, name, url, user_id, created_at, updated_at
+),
+inserted_feed_follow AS (
+  INSERT INTO feed_follows (user_id, feed_id)
+  SELECT
+    inserted_feed.user_id,
+    inserted_feed.id
+  FROM inserted_feed
 )
-RETURNING id, name, url, user_id, created_at, updated_at
+SELECT id, name, url, user_id, created_at, updated_at
+FROM inserted_feed
 `
 
 type CreateFeedParams struct {
@@ -34,7 +45,16 @@ type CreateFeedParams struct {
 	UpdatedAt time.Time
 }
 
-func (q *Queries) CreateFeed(ctx context.Context, arg CreateFeedParams) (Feed, error) {
+type CreateFeedRow struct {
+	ID        uuid.UUID
+	Name      string
+	Url       string
+	UserID    uuid.UUID
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
+func (q *Queries) CreateFeed(ctx context.Context, arg CreateFeedParams) (CreateFeedRow, error) {
 	row := q.db.QueryRowContext(ctx, createFeed,
 		arg.ID,
 		arg.Name,
@@ -43,7 +63,7 @@ func (q *Queries) CreateFeed(ctx context.Context, arg CreateFeedParams) (Feed, e
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)
-	var i Feed
+	var i CreateFeedRow
 	err := row.Scan(
 		&i.ID,
 		&i.Name,

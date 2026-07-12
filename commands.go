@@ -26,14 +26,15 @@ type commands struct {
 func newCommands() commands {
 	return commands{
 		registry: map[string]func(*state, command) error{
-			"login":    handlerLogin,
-			"register": handlerRegister,
-			"reset":    handlerReset,
-			"users":    handleUsers,
-			"agg":      handleAgg,
-			"addfeed":  handleAddFeed,
-			"feeds":    handleListFeeds,
-			"follow":   handleFollow,
+			"login":     handlerLogin,
+			"register":  handlerRegister,
+			"reset":     handlerReset,
+			"users":     handleUsers,
+			"agg":       handleAgg,
+			"addfeed":   handleAddFeed,
+			"feeds":     handleListFeeds,
+			"follow":    handleFollow,
+			"following": handleListFollowing,
 		},
 	}
 }
@@ -275,6 +276,41 @@ func handleFollow(s *state, cmd command) error {
 	}
 
 	fmt.Fprintf(s.output, "Successfully followed: %s\n", follow.FeedName)
+
+	return nil
+}
+
+func handleListFollowing(s *state, cmd command) error {
+	if len(cmd.args) != 0 {
+		return fmt.Errorf("following expects no arguments")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	user, err := s.db.GetUser(ctx, s.cfg.CurrentUserName)
+	if err != nil {
+		return err
+	}
+
+	follows, err := s.db.GetFeedFollowsForUser(ctx, user.ID)
+	if err != nil {
+		return err
+	}
+
+	if len(follows) == 0 {
+		fmt.Fprintln(s.output, "no feeds followed yet")
+		return nil
+	}
+
+	fmt.Fprint(s.output, "Listing follows:\n")
+	fmt.Fprint(s.output, "-----------------------------------\n")
+
+	for i, follow := range follows {
+		fmt.Fprintf(s.output, "#%d: %s\n", i+1, follow.FeedName)
+		fmt.Fprintf(s.output, "    %s\n", follow.FeedUrl)
+		fmt.Fprint(s.output, "-----------------------------------\n")
+	}
 
 	return nil
 }
