@@ -15,3 +15,10 @@ SELECT f.id, f.name, f.url, u.name as created_by, f.created_at, f.updated_at
 FROM feeds f
 JOIN users u ON f.user_id = u.id
 ORDER BY f.name;
+
+-- name: GetFeedByUrl :one
+SELECT f.id, f.name, f.url, u.name as created_by, f.created_at, f.updated_at
+FROM feeds f
+JOIN users u ON f.user_id = u.id
+WHERE f.url = $1;
+

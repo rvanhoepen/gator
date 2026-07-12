@@ -33,6 +33,7 @@ func newCommands() commands {
 			"agg":      handleAgg,
 			"addfeed":  handleAddFeed,
 			"feeds":    handleListFeeds,
+			"follow":   handleFollow,
 		},
 	}
 }
@@ -234,6 +235,46 @@ func handleListFeeds(s *state, cmd command) error {
 		fmt.Fprintf(s.output, "    Created by: %s\n", feed.CreatedBy)
 		fmt.Fprint(s.output, "-----------------------------------\n")
 	}
+
+	return nil
+}
+
+func handleFollow(s *state, cmd command) error {
+	if len(cmd.args) != 1 {
+		return fmt.Errorf("follow expects one argument: url")
+	}
+
+	url := cmd.args[0]
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	user, err := s.db.GetUser(ctx, s.cfg.CurrentUserName)
+	if err != nil {
+		return err
+	}
+
+	feed, err := s.db.GetFeedByUrl(ctx, url)
+	if err != nil {
+		return err
+	}
+
+	follow, err := s.db.CreateFeedFollow(ctx, database.CreateFeedFollowParams{
+		ID:        uuid.New(),
+		UserID:    user.ID,
+		FeedID:    feed.ID,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	})
+	if err != nil {
+		var pgErr *pq.Error
+		if errors.As(err, &pgErr) && pgErr.Constraint == "feed_follows_user_id_feed_id_key" {
+			return fmt.Errorf("you are already following this feed")
+		}
+		return err
+	}
+
+	fmt.Fprintf(s.output, "Successfully followed: %s\n", follow.FeedName)
 
 	return nil
 }
