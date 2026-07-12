@@ -35,6 +35,7 @@ func newCommands() commands {
 			"feeds":     handleListFeeds,
 			"follow":    middlewareLoggedIn(handleFollow),
 			"following": middlewareLoggedIn(handleListFollowing),
+			"unfollow":  middlewareLoggedIn(handleUnfollow),
 		},
 	}
 }
@@ -297,5 +298,32 @@ func handleListFollowing(s *state, cmd command, user database.User) error {
 		fmt.Fprint(s.output, "-----------------------------------\n")
 	}
 
+	return nil
+}
+
+func handleUnfollow(s *state, cmd command, user database.User) error {
+	if len(cmd.args) != 1 {
+		return fmt.Errorf("unfollow expects one argument: the url of the feed")
+	}
+
+	url := cmd.args[0]
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	feed, err := s.db.GetFeedByUrl(ctx, url)
+	if err != nil {
+		return err
+	}
+
+	err = s.db.DeleteFeedFollow(ctx, database.DeleteFeedFollowParams{
+		UserID: user.ID,
+		FeedID: feed.ID,
+	})
+	if err != nil {
+		return err
+	}
+
+	fmt.Fprintf(s.output, "Unfollowed %s\n", feed.Url)
 	return nil
 }
