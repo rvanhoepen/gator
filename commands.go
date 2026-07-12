@@ -31,10 +31,10 @@ func newCommands() commands {
 			"reset":     handlerReset,
 			"users":     handleUsers,
 			"agg":       handleAgg,
-			"addfeed":   handleAddFeed,
+			"addfeed":   middlewareLoggedIn(handleAddFeed),
 			"feeds":     handleListFeeds,
-			"follow":    handleFollow,
-			"following": handleListFollowing,
+			"follow":    middlewareLoggedIn(handleFollow),
+			"following": middlewareLoggedIn(handleListFollowing),
 		},
 	}
 }
@@ -168,7 +168,7 @@ func handleAgg(s *state, cmd command) error {
 	return nil
 }
 
-func handleAddFeed(s *state, cmd command) error {
+func handleAddFeed(s *state, cmd command, user database.User) error {
 	if len(cmd.args) != 2 {
 		return fmt.Errorf("addfeed expects two arguments: name and url")
 	}
@@ -179,12 +179,7 @@ func handleAddFeed(s *state, cmd command) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	user, err := s.db.GetUser(ctx, s.cfg.CurrentUserName)
-	if err != nil {
-		return err
-	}
-
-	_, err = feed.FetchFeed(ctx, url)
+	_, err := feed.FetchFeed(ctx, url)
 	if err != nil {
 		return err
 	}
@@ -240,7 +235,7 @@ func handleListFeeds(s *state, cmd command) error {
 	return nil
 }
 
-func handleFollow(s *state, cmd command) error {
+func handleFollow(s *state, cmd command, user database.User) error {
 	if len(cmd.args) != 1 {
 		return fmt.Errorf("follow expects one argument: url")
 	}
@@ -249,11 +244,6 @@ func handleFollow(s *state, cmd command) error {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-
-	user, err := s.db.GetUser(ctx, s.cfg.CurrentUserName)
-	if err != nil {
-		return err
-	}
 
 	feed, err := s.db.GetFeedByUrl(ctx, url)
 	if err != nil {
@@ -280,18 +270,13 @@ func handleFollow(s *state, cmd command) error {
 	return nil
 }
 
-func handleListFollowing(s *state, cmd command) error {
+func handleListFollowing(s *state, cmd command, user database.User) error {
 	if len(cmd.args) != 0 {
 		return fmt.Errorf("following expects no arguments")
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-
-	user, err := s.db.GetUser(ctx, s.cfg.CurrentUserName)
-	if err != nil {
-		return err
-	}
 
 	follows, err := s.db.GetFeedFollowsForUser(ctx, user.ID)
 	if err != nil {
