@@ -196,6 +196,10 @@ func handleAddFeed(s *state, cmd command) error {
 		UpdatedAt: time.Now(),
 	})
 	if err != nil {
+		var pgErr *pq.Error
+		if errors.As(err, &pgErr) && pgErr.Constraint == "feeds_url_key" {
+			return fmt.Errorf("feed with url: %q already exists", url)
+		}
 		return err
 	}
 
