@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -35,6 +36,7 @@ func newCommands() commands {
 			"follow":    middlewareLoggedIn(handleFollow),
 			"following": middlewareLoggedIn(handleListFollowing),
 			"unfollow":  middlewareLoggedIn(handleUnfollow),
+			"browse":    middlewareLoggedIn(handleBrowse),
 		},
 	}
 }
@@ -325,5 +327,40 @@ func handleUnfollow(s *state, cmd command, user database.User) error {
 	}
 
 	fmt.Fprintf(s.output, "Unfollowed %s\n", feed.Url)
+	return nil
+}
+
+func handleBrowse(s *state, cmd command, user database.User) error {
+	if len(cmd.args) > 1 {
+		return fmt.Errorf("browse expects one optional argument: the number of posts to show")
+	}
+
+	limit := 2
+	if len(cmd.args) == 1 {
+		parsedLimit, err := strconv.Atoi(cmd.args[0])
+		if err != nil {
+			return fmt.Errorf("browse limit must be a number")
+		}
+		if parsedLimit < 1 {
+			return fmt.Errorf("browse limit must be greater than 0")
+		}
+		limit = parsedLimit
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	posts, err := s.db.GetPostsForUser(ctx, database.GetPostsForUserParams{
+		UserID: user.ID,
+		Limit:  int32(limit),
+	})
+	if err != nil {
+		return err
+	}
+
+	for i, post := range posts {
+		fmt.Fprintf(s.output, "%d) %s\n", i+1, post.Title)
+	}
+
 	return nil
 }
