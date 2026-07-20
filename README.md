@@ -193,6 +193,17 @@ go run . agg 1m
 go run . browse 10
 ```
 
+## Roadmap
+
+- Add sorting and filtering options to the `browse` command
+- Add pagination to the `browse` command
+- Add concurrency to the `agg` command so that it can fetch more frequently
+- Add a `search` command that allows fuzzy searching of posts
+- Add bookmarking or liking posts
+- Add a TUI that allows selecting a post in the terminal and viewing it in a more readable format, either in the terminal or in a browser
+- Add an HTTP API with authentication and authorization so users can interact with the service remotely
+- Write a service manager that keeps the `agg` command running in the background and restarts it if it crashes
+
 ## Why RSS?
 
 RSS lets websites publish updates in a standard format. Instead of checking many sites manually, Gator can collect updates from all of them and show new posts in one place.
