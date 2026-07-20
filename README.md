@@ -1,5 +1,8 @@
 # Gator
 
+[![Test](https://github.com/rvanhoepen/gator/actions/workflows/test.yml/badge.svg)](https://github.com/rvanhoepen/gator/actions/workflows/test.yml)
+[![codecov](https://codecov.io/gh/rvanhoepen/gator/branch/main/graph/badge.svg)](https://codecov.io/gh/rvanhoepen/gator)
+
 Gator is an RSS feed aggregator built in Go.
 
 It is a command-line tool for collecting RSS feeds, storing posts in PostgreSQL, and reading summaries from the terminal. The name comes from aggreGATOR.
