@@ -7,6 +7,7 @@ package database
 
 import (
 	"context"
+	"database/sql"
 	"time"
 
 	"github.com/google/uuid"
@@ -23,7 +24,7 @@ WITH inserted_feed AS (
     $5,
     $6
   )
-  RETURNING id, name, url, user_id, created_at, updated_at
+  RETURNING id, name, url, user_id, created_at, updated_at, last_fetched_at
 ),
 inserted_feed_follow AS (
   INSERT INTO feed_follows (user_id, feed_id)
@@ -32,7 +33,7 @@ inserted_feed_follow AS (
     inserted_feed.id
   FROM inserted_feed
 )
-SELECT id, name, url, user_id, created_at, updated_at
+SELECT id, name, url, user_id, created_at, updated_at, last_fetched_at
 FROM inserted_feed
 `
 
@@ -46,12 +47,13 @@ type CreateFeedParams struct {
 }
 
 type CreateFeedRow struct {
-	ID        uuid.UUID
-	Name      string
-	Url       string
-	UserID    uuid.UUID
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ID            uuid.UUID
+	Name          string
+	Url           string
+	UserID        uuid.UUID
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+	LastFetchedAt sql.NullTime
 }
 
 func (q *Queries) CreateFeed(ctx context.Context, arg CreateFeedParams) (CreateFeedRow, error) {
@@ -71,6 +73,7 @@ func (q *Queries) CreateFeed(ctx context.Context, arg CreateFeedParams) (CreateF
 		&i.UserID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.LastFetchedAt,
 	)
 	return i, err
 }
@@ -149,4 +152,32 @@ func (q *Queries) GetFeeds(ctx context.Context) ([]GetFeedsRow, error) {
 		return nil, err
 	}
 	return items, nil
+}
+
+const getNextFeedToFetch = `-- name: GetNextFeedToFetch :one
+WITH next_feed AS (
+  SELECT id
+  FROM feeds
+  ORDER BY last_fetched_at NULLS FIRST, created_at
+  LIMIT 1
+)
+UPDATE feeds
+SET last_fetched_at = now()
+WHERE id = (SELECT id FROM next_feed)
+RETURNING id, name, url,  user_id, created_at, updated_at, last_fetched_at
+`
+
+func (q *Queries) GetNextFeedToFetch(ctx context.Context) (Feed, error) {
+	row := q.db.QueryRowContext(ctx, getNextFeedToFetch)
+	var i Feed
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Url,
+		&i.UserID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.LastFetchedAt,
+	)
+	return i, err
 }

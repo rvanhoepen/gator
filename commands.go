@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -150,23 +149,24 @@ func handleUsers(s *state, cmd command) error {
 
 func handleAgg(s *state, cmd command) error {
 	if len(cmd.args) != 1 {
-		return fmt.Errorf("agg expects one argument; the url")
+		return fmt.Errorf("agg expects 1 argument; the time between requests")
 	}
 
-	url := cmd.args[0]
-
-	feed, err := feed.FetchFeed(context.Background(), url)
+	timeBetweenReqs, err := time.ParseDuration(cmd.args[0])
 	if err != nil {
 		return err
 	}
 
-	data, err := json.MarshalIndent(feed, "", "  ")
-	if err != nil {
-		return err
-	}
+	fmt.Fprintf(s.output, "Collecting feeds every %s\n", cmd.args[0])
 
-	fmt.Fprintln(s.output, string(data))
-	return nil
+	ticker := time.NewTicker(timeBetweenReqs)
+	defer ticker.Stop()
+
+	for ; ; <-ticker.C {
+		if err := scrapeFeeds(s); err != nil {
+			fmt.Fprintln(s.output, err)
+		}
+	}
 }
 
 func handleAddFeed(s *state, cmd command, user database.User) error {

@@ -33,3 +33,14 @@ FROM feeds f
 JOIN users u ON f.user_id = u.id
 WHERE f.url = $1;
 
+-- name: GetNextFeedToFetch :one
+WITH next_feed AS (
+  SELECT id
+  FROM feeds
+  ORDER BY last_fetched_at NULLS FIRST, created_at
+  LIMIT 1
+)
+UPDATE feeds
+SET last_fetched_at = now()
+WHERE id = (SELECT id FROM next_feed)
+RETURNING id, name, url,  user_id, created_at, updated_at, last_fetched_at;
